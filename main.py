@@ -51,12 +51,10 @@ async def get_projects(vacancy_id: int, session: aiohttp.ClientSession) -> list:
         "Стажировка" if vacancy_json["internship_type"] == "internship" else "Вакансия"
     ]
 
-    print(vacancy_result)
-    print("-" * 20)
     return vacancy_result
 
 
-async def main() -> None:
+async def download_all_vacancy() -> None:
     vacancy_link = "https://internship.vk.company/vacancy"
     internship_link = "https://internship.vk.company/internship"
 
@@ -66,10 +64,17 @@ async def main() -> None:
     async with aiohttp.ClientSession() as session:
         tasks = [asyncio.create_task(get_projects(i, session)) for i in vacancy_id_list]
         tasks.extend([asyncio.create_task(get_projects(i, session)) for i in internship_id_list])
-        await asyncio.gather(*tasks)
 
+        result = await asyncio.gather(*tasks)
+        return result
+
+
+async def main():
+    result = await download_all_vacancy()
+    print(result)
+    return result
 
 if __name__ == "__main__":
     t0 = time.time()
     asyncio.run(main())
-    print(time.time() - t0)
+    print(f"Время работы программы: {time.time() - t0}")
