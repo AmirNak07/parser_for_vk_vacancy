@@ -50,7 +50,8 @@ async def get_projects(vacancy_id: int, session: aiohttp.ClientSession) -> list:
         "\n".join(vacancy_json["landing"]["aboutTasksText"]),
         "\n".join(vacancy_json["landing"]["aboutSkillsText"]["items"]),
         f"https://internship.vk.company/vacancy/{vacancy_json['id']}",
-        "Стажировка" if vacancy_json["internship_type"] == "internship" else "Вакансия"
+        "Стажировка" if vacancy_json["internship_type"] == "internship" else "Вакансия",
+        vacancy_json["direction"]
     ]
 
     return vacancy_result
@@ -76,17 +77,18 @@ async def download_all_vacancy() -> None:
         return result
 
 
-def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: str, data: list):
+async def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: str, data: list):
     print("Отправка таблицы в Google Sheets")
     titles = [["Позиция",
-               "Направления",
+               "Команда",
                "Город",
                "Формат работы",
                "Занятость",
                "Предстоящие задачи",
                "Необходимо иметь",
                "Ссылка",
-               "Раздел"]]
+               "Раздел",
+               "Направление"]]
     result_data = titles + data
     sheet = client.open_by_key(table_id)
     worksheet = sheet.worksheet(worklist)
@@ -110,7 +112,7 @@ async def main():
         "credentials.json", scope)
     client = gspread.authorize(creds)
     vacancies = await download_all_vacancy()
-    send_to_google_sheets(client, table_id, name_worksheet, vacancies)
+    await send_to_google_sheets(client, table_id, name_worksheet, vacancies)
 
 
 if __name__ == "__main__":
