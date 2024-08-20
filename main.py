@@ -1,30 +1,32 @@
 import asyncio
 import time
 import json
+import os
 
 import aiohttp
-import httpx
+import gspread
+from gspread.client import Client as gspreadClient
+from oauth2client.service_account import ServiceAccountCredentials
+from dotenv import load_dotenv
 
 
-def get_opened_projects(link: str) -> list:
-    vacancy_request = httpx.get(link)
-    if vacancy_request.status_code == 200:
-        vacancy_html = vacancy_request.text
+async def get_opened_projects(link: str, session: aiohttp.ClientSession) -> list:
+    async with session.get(link) as response:
+        if response.status == 200:
+            vacancy_html = await response.text("utf-8")
 
     vacancy_all_json = json.loads(vacancy_html[vacancy_html.find('<script id="__NEXT_DATA__"'):].replace('<script id="__NEXT_DATA__" type="application/json">', "").replace("</script></body></html>", ""))
     vacancy_json = vacancy_all_json["props"]["pageProps"]["page"]["vacancies"]
     vacancy_opened = [vacancy["id"] for vacancy in vacancy_json if vacancy["is_opened"]]
-    print(vacancy_opened)
-    print("-" * 20)
     return vacancy_opened
 
 
-def remove_non_breaking_spaces(data: dict) -> dict:
+async def remove_non_breaking_spaces(data: dict) -> dict:
     if isinstance(data, dict):
         for key, value in data.items():
-            data[key] = remove_non_breaking_spaces(value)
+            data[key] = await remove_non_breaking_spaces(value)
     elif isinstance(data, list):
-        data = [remove_non_breaking_spaces(item) for item in data]
+        data = [await remove_non_breaking_spaces(item) for item in data]
     elif isinstance(data, str):
         data = data.replace('\xa0', ' ')
     elif isinstance(data, int) or data is None:
@@ -38,7 +40,7 @@ async def get_projects(vacancy_id: int, session: aiohttp.ClientSession) -> list:
     async with session.get(link) as response:
         vacancy_html = await response.text("utf-8")
     vacancy_all_json = json.loads(vacancy_html[vacancy_html.find('<script id="__NEXT_DATA__"'):].replace('<script id="__NEXT_DATA__" type="application/json">', "").replace("</script></body></html>", ""))
-    vacancy_json = remove_non_breaking_spaces(vacancy_all_json["props"]["pageProps"]["page"]["vacancy"])
+    vacancy_json = await remove_non_breaking_spaces(vacancy_all_json["props"]["pageProps"]["page"]["vacancy"])
     vacancy_result = [
         vacancy_json["title"],
         vacancy_json["business_unit"]["name"],
@@ -58,21 +60,58 @@ async def download_all_vacancy() -> None:
     vacancy_link = "https://internship.vk.company/vacancy"
     internship_link = "https://internship.vk.company/internship"
 
-    vacancy_id_list = get_opened_projects(vacancy_link)
-    internship_id_list = get_opened_projects(internship_link)
-
+    print("Поиск окткрытых вакансий...")
+    async with aiohttp.ClientSession() as session:
+        vacancy_id_list = await get_opened_projects(vacancy_link, session)
+        internship_id_list = await get_opened_projects(internship_link, session)
+    print("ID открытых вакансий:")
+    print(vacancy_id_list + internship_id_list)
+    print("Сбор информации о вакансиях в таблицу...")
     async with aiohttp.ClientSession() as session:
         tasks = [asyncio.create_task(get_projects(i, session)) for i in vacancy_id_list]
         tasks.extend([asyncio.create_task(get_projects(i, session)) for i in internship_id_list])
 
         result = await asyncio.gather(*tasks)
+        print("Таблица готова")
         return result
 
 
+def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: str, data: list):
+    print("Отправка таблицы в Google Sheets")
+    titles = [["Позиция",
+               "Направления",
+               "Город",
+               "Формат работы",
+               "Занятость",
+               "Предстоящие задачи",
+               "Необходимо иметь",
+               "Ссылка",
+               "Раздел"]]
+    result_data = titles + data
+    sheet = client.open_by_key(table_id)
+    worksheet = sheet.worksheet(worklist)
+    worksheet.clear()
+    worksheet.append_rows(values=result_data)
+    print("Таблица отправлена")
+
+
 async def main():
-    result = await download_all_vacancy()
-    print(result)
-    return result
+    load_dotenv()
+    table_id = os.getenv("ID_TABLE")
+    name_worksheet = os.getenv("SPREADSHEET")
+
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "credentials.json", scope)
+    client = gspread.authorize(creds)
+    vacancies = await download_all_vacancy()
+    send_to_google_sheets(client, table_id, name_worksheet, vacancies)
+
 
 if __name__ == "__main__":
     t0 = time.time()
