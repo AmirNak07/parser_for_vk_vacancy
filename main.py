@@ -47,7 +47,7 @@ async def get_projects(vacancy_id: int, session: aiohttp.ClientSession) -> list:
         vacancy_json["city"],
         vacancy_json["format"],
         vacancy_json["employment"],
-        "\n".join(vacancy_json["landing"]["aboutTasksText"]),
+        "\n".join(vacancy_json["landing"]["aboutTasksText"]["items"]),
         "\n".join(vacancy_json["landing"]["aboutSkillsText"]["items"]),
         f"https://internship.vk.company/vacancy/{vacancy_json['id']}",
         "Стажировка" if vacancy_json["internship_type"] == "internship" else "Вакансия",
@@ -118,4 +118,4 @@ async def main():
 if __name__ == "__main__":
     t0 = time.time()
     asyncio.run(main())
-    print(f"Время работы программы: {time.time() - t0}")
+    print(f"Время работы программы: {round(time.time() - t0, 2)}")
