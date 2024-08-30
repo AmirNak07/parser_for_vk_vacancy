@@ -1,7 +1,9 @@
 import asyncio
 import time
 import json
+import datetime
 
+import schedule
 import aiohttp
 import gspread
 from gspread.client import Client as gspreadClient
@@ -114,7 +116,17 @@ async def main():
     await send_to_google_sheets(client, table_id, name_worksheet, vacancies)
 
 
-if __name__ == "__main__":
+def timer():
+    print(f"Время работы: {datetime.datetime.now().replace(microsecond=0)}")
     t0 = time.time()
     asyncio.run(main())
-    print(f"Время работы программы: {round(time.time() - t0, 2)}")
+    print(f"Время выполнения программы: {round(time.time() - t0, 2)}")
+    print("-" * 30)
+
+
+if __name__ == "__main__":
+    # schedule.every().day.at("00:01", "Europe/Moscow").do(timer)
+    schedule.every(3).hours.do(timer)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
