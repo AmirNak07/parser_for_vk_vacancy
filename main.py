@@ -1,13 +1,13 @@
 import asyncio
 import time
 import json
-import os
 
 import aiohttp
 import gspread
 from gspread.client import Client as gspreadClient
 from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import load_dotenv
+
+from config import TABLE_ID, NAME_WORKSHEET
 
 
 async def get_opened_projects(link: str, session: aiohttp.ClientSession) -> list:
@@ -98,9 +98,8 @@ async def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: 
 
 
 async def main():
-    load_dotenv()
-    table_id = os.getenv("ID_TABLE")
-    name_worksheet = os.getenv("SPREADSHEET")
+    table_id = TABLE_ID
+    name_worksheet = NAME_WORKSHEET
 
     scope = [
         "https://spreadsheets.google.com/feeds",
