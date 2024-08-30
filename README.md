@@ -55,10 +55,24 @@
 
     В директорию с проектом переместите(скопируете) файл с вашими данными из Google Workplace с вашим проектом и назовите "credentials.json"
 
-## Запуск
+## Запуск(обычный)
 
 ```bash
 python main.py
 ```
+
+## Запуск(Docker)
+
+1. Собрать образ:
+
+    ```bash
+    docker build --no-cache --platform linux/amd64 -t vk_parser_image .
+    ```
+
+2. Запустить контейнер
+
+    ```bash
+    docker run -d --env-file .env --name vk_parser vk_parser_image
+    ```
 
 [©Amir Nakhushev](https://github.com/AmirNak07)
