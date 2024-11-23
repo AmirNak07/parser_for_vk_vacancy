@@ -84,7 +84,7 @@ async def download_all_vacancy() -> None:
 
 
 async def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: str, data: list):
-    print("Отправка таблицы в Google Sheets")
+    logger.debug("Отправка таблицы в Google Sheets")
     titles = [["Позиция",
                "Команда",
                "Город",
@@ -103,6 +103,7 @@ async def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: 
     logger.info("Таблица отправлена")
 
 
+@logger.catch
 async def main():
     logger.remove()
     logger.configure(**LOGS_CONFIG)
@@ -130,7 +131,7 @@ def timer():
 
 
 if __name__ == "__main__":
-    schedule.every().day.at("00:01", "Europe/Moscow").do(timer)
+    # schedule.every().day.at("00:01", "Europe/Moscow").do(timer)
     schedule.every(3).hours.do(timer)
     while True:
         schedule.run_pending()
