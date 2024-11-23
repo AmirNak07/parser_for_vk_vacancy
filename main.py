@@ -1,15 +1,15 @@
 import asyncio
-import time
 import json
-import datetime
+import time
 
-import schedule
 import aiohttp
 import gspread
+import schedule
 from gspread.client import Client as gspreadClient
+from loguru import logger
 from oauth2client.service_account import ServiceAccountCredentials
 
-from config import TABLE_ID, NAME_WORKSHEET
+from config import NAME_WORKSHEET, TABLE_ID, LOGS_CONFIG
 
 
 async def get_opened_projects(link: str, session: aiohttp.ClientSession) -> list:
@@ -17,9 +17,11 @@ async def get_opened_projects(link: str, session: aiohttp.ClientSession) -> list
         if response.status == 200:
             vacancy_html = await response.text("utf-8")
 
-    vacancy_all_json = json.loads(vacancy_html[vacancy_html.find('<script id="__NEXT_DATA__"'):].replace('<script id="__NEXT_DATA__" type="application/json">', "").replace("</script></body></html>", ""))
+    vacancy_all_json = json.loads(vacancy_html[vacancy_html.find('<script id="__NEXT_DATA__"'):].replace(
+        '<script id="__NEXT_DATA__" type="application/json">', "").replace("</script></body></html>", ""))
     vacancy_json = vacancy_all_json["props"]["pageProps"]["page"]["vacancies"]
-    vacancy_opened = [vacancy["id"] for vacancy in vacancy_json if vacancy["is_opened"]]
+    vacancy_opened = [vacancy["id"]
+                      for vacancy in vacancy_json if vacancy["is_opened"]]
     return vacancy_opened
 
 
@@ -41,7 +43,8 @@ async def get_projects(vacancy_id: int, session: aiohttp.ClientSession) -> list:
     link = f"https://internship.vk.company/vacancy/{vacancy_id}"
     async with session.get(link) as response:
         vacancy_html = await response.text("utf-8")
-    vacancy_all_json = json.loads(vacancy_html[vacancy_html.find('<script id="__NEXT_DATA__"'):].replace('<script id="__NEXT_DATA__" type="application/json">', "").replace("</script></body></html>", ""))
+    vacancy_all_json = json.loads(vacancy_html[vacancy_html.find('<script id="__NEXT_DATA__"'):].replace(
+        '<script id="__NEXT_DATA__" type="application/json">', "").replace("</script></body></html>", ""))
     vacancy_json = await remove_non_breaking_spaces(vacancy_all_json["props"]["pageProps"]["page"]["vacancy"])
     vacancy_result = [
         vacancy_json["title"],
@@ -63,19 +66,20 @@ async def download_all_vacancy() -> None:
     vacancy_link = "https://internship.vk.company/vacancy"
     internship_link = "https://internship.vk.company/internship"
 
-    print("Поиск окткрытых вакансий...")
+    logger.debug("Поиск окткрытых вакансий...")
     async with aiohttp.ClientSession() as session:
         vacancy_id_list = await get_opened_projects(vacancy_link, session)
         internship_id_list = await get_opened_projects(internship_link, session)
-    print("ID открытых вакансий:")
-    print(vacancy_id_list + internship_id_list)
-    print("Сбор информации о вакансиях в таблицу...")
+    logger.debug(f"ID открытых вакансий: {vacancy_id_list + internship_id_list}")
+    logger.debug("Сбор информации о вакансиях в таблицу...")
     async with aiohttp.ClientSession() as session:
-        tasks = [asyncio.create_task(get_projects(i, session)) for i in vacancy_id_list]
-        tasks.extend([asyncio.create_task(get_projects(i, session)) for i in internship_id_list])
+        tasks = [asyncio.create_task(get_projects(i, session))
+                 for i in vacancy_id_list]
+        tasks.extend([asyncio.create_task(get_projects(i, session))
+                     for i in internship_id_list])
 
         result = await asyncio.gather(*tasks)
-        print("Таблица готова")
+        logger.debug("Таблица готова")
         return result
 
 
@@ -96,10 +100,13 @@ async def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: 
     worksheet = sheet.worksheet(worklist)
     worksheet.clear()
     worksheet.append_rows(values=result_data)
-    print("Таблица отправлена")
+    logger.info("Таблица отправлена")
 
 
 async def main():
+    logger.remove()
+    logger.configure(**LOGS_CONFIG)
+
     table_id = TABLE_ID
     name_worksheet = NAME_WORKSHEET
 
@@ -110,23 +117,22 @@ async def main():
     ]
 
     creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "credentials.json", scope)
+        "config/credentials.json", scope)
     client = gspread.authorize(creds)
+    logger.info("Начало парсинга")
     vacancies = await download_all_vacancy()
-    await send_to_google_sheets(client, table_id, name_worksheet, vacancies)
+    # await send_to_google_sheets(client, table_id, name_worksheet, vacancies)
+    logger.info("Парсинг прошёл успешно")
 
 
 def timer():
-    print(f"Время работы: {datetime.datetime.now().replace(microsecond=0)}")
-    t0 = time.time()
     asyncio.run(main())
-    print(f"Время выполнения программы: {round(time.time() - t0, 2)}")
-    print("-" * 30)
 
 
 if __name__ == "__main__":
-    # schedule.every().day.at("00:01", "Europe/Moscow").do(timer)
+    schedule.every().day.at("00:01", "Europe/Moscow").do(timer)
     schedule.every(3).hours.do(timer)
     while True:
         schedule.run_pending()
         time.sleep(1)
+    timer()

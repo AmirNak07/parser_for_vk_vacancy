@@ -1,0 +1,19 @@
+{
+    "handlers": [
+        {
+            "sink": "sys.stdout",
+            "level": "INFO",
+            "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+            "enqueue": true
+        },
+        {
+            "sink": "logs/log_{time}.log",
+            "level": "DEBUG",
+            "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {module} | {message}",
+            "rotation": "1 week",
+            "retention": "1 month",
+            "compression": "zip",
+            "enqueue": true
+        }
+    ]
+}
