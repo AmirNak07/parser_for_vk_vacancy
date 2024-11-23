@@ -121,7 +121,7 @@ async def main():
     client = gspread.authorize(creds)
     logger.info("Начало парсинга")
     vacancies = await download_all_vacancy()
-    # await send_to_google_sheets(client, table_id, name_worksheet, vacancies)
+    await send_to_google_sheets(client, table_id, name_worksheet, vacancies)
     logger.info("Парсинг прошёл успешно")
 
 
@@ -135,4 +135,3 @@ if __name__ == "__main__":
     while True:
         schedule.run_pending()
         time.sleep(1)
-    timer()
