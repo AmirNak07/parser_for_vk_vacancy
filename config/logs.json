@@ -3,13 +3,13 @@
         {
             "sink": "sys.stdout",
             "level": "INFO",
-            "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+            "format": "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {message}",
             "enqueue": true
         },
         {
             "sink": "logs/log_{time}.log",
             "level": "DEBUG",
-            "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {module} | {message}",
+            "format": "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {module} | {message}",
             "rotation": "1 week",
             "retention": "1 month",
             "compression": "zip",
