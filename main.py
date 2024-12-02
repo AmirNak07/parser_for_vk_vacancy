@@ -12,6 +12,10 @@ from oauth2client.service_account import ServiceAccountCredentials
 from config import NAME_WORKSHEET, TABLE_ID, LOGS_CONFIG
 
 
+logger.remove()
+logger.configure(**LOGS_CONFIG)
+
+
 async def get_opened_projects(link: str, session: aiohttp.ClientSession) -> list:
     async with session.get(link) as response:
         if response.status == 200:
@@ -105,9 +109,6 @@ async def send_to_google_sheets(client: gspreadClient, table_id: str, worklist: 
 
 @logger.catch
 async def main():
-    logger.remove()
-    logger.configure(**LOGS_CONFIG)
-
     table_id = TABLE_ID
     name_worksheet = NAME_WORKSHEET
 
